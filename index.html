@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SQL Trace Debug by JGomez88</title>
+  <script src="https://unpkg.com/vue"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/default.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js"></script>
+  <script src="https://unpkg.com/sql-formatter@2.3.1/dist/sql-formatter.min.js"></script>
+</head>
+<body>
+  <div id="app" class="container">
+    <h1 class="text-center">{{ nombre_app +' '+ ver_app}}</h1>
+    <form>
+        <div class="container form-group">
+            <textarea placeholder="Trace" class="form-control" v-model="debug" @input="cleanDebug" rows=10></textarea>
+        </div>
+        <div class="container" v-if='script'>
+          <h2>Preparing</h2>
+          <pre v-highlightjs><code class="sql">{{ script | formatSQL }}</code></pre>
+        </div>
+        <div class="container"  v-if='script'>
+          <h2>Parameters</h2>
+          <ol>
+            <li v-for="v in vars">
+              {{ v }}
+            </li>
+          </ol>
+        </div>
+        <div class="container" v-if='res'>
+            <h2>Script</h2>
+            <pre v-highlightjs><code class="sql">{{ res | formatSQL }}</code></pre>
+        </div>
+        <div class="container" v-if='res2'>
+          <h2>Script (*)</h2>
+          <pre v-highlightjs><code class="sql">{{ res2 | formatSQL }}</code></pre>
+        </div>
+    </form>     
+  </div>
+
+  <script>
+    var getExp = function (regExp, str, grupo){
+      var result = regExp.exec(str);
+      if(result && result[grupo]){
+        return result[grupo];
+      }
+      return '';    
+    }
+
+    var getPreparing =  function (debug){
+      var regExp = /Preparing: (.+)/g;
+      return getExp(regExp,debug,1);
+    }
+
+    var getParametros =  function (debug){
+      var regExp = /Parameters: (.+)/g;
+      return getExp(regExp,debug,1);
+    }
+
+    var quitarTipos =  function(parametros){
+      if(parametros){
+        var v = parametros.replace(/\(.+?\)/g, '');
+        return v;
+      }
+      return '';
+    }
+    
+    var quitarAtributos =  function(sql){
+      if(sql){
+        return sql.replace(/select (.+) from/g, 'select * from');
+      }
+      return '';
+    }
+
+    var getRes = function(v, script){
+        var r = script;
+        var i = 0;
+        r = r.replace(/\?/g,function(){return v[i++]})
+        return r;
+    }
+
+    var app = new Vue({
+      el: '#app',
+      data: {
+        nombre_app:'SQL Trace Debug',
+        ver_app: '1.1',
+        debug:'',
+        res:'',
+        vars:'',
+        script:'',
+        res2:''
+      },
+      methods: {
+        onCopy: function (e) {
+          alert('Texto copiado!!!');
+        },
+        onError: function (e) {
+          alert('Falló al copiar texto copiado!!!');
+        },
+        cleanDebug: function (evt) {
+          app.script = getPreparing(app.debug);
+          var p = quitarTipos(getParametros(app.debug));
+          if(p){
+            app.vars = p.split(', ');
+          }else{
+            app.vars = [];
+          }
+          if(app.vars && app.script){
+            app.res = getRes(app.vars, app.script);
+          }else{
+            app.res = '';
+          }
+          if(app.res){
+            app.res2 = quitarAtributos(app.res);
+          }
+        },
+        getParametros,
+        getPreparing,
+        getRes,
+        quitarTipos,
+        quitarAtributos
+      },
+      filters: {
+        formatSQL: function(sql){
+          return window.sqlFormatter.format(sql);
+        }
+      }
+    })
+
+    Vue.directive('highlightjs', {
+      deep: true,
+      bind: function(el, binding) {
+        let targets = el.querySelectorAll('code')
+        targets.forEach((target) => {
+          if (binding.value) {
+            target.textContent = binding.value
+          }
+          hljs.highlightBlock(target)
+        })
+      },
+      componentUpdated: function(el, binding) {
+        let targets = el.querySelectorAll('code')
+        targets.forEach((target) => {
+          if (binding.value) {
+            target.textContent = binding.value
+            hljs.highlightBlock(target)
+          }
+        })
+      }
+    });
+  </script>
+</body>
+</html>
