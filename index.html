@@ -26,13 +26,14 @@
           <h2>Parameters</h2>
           <ol>
             <li v-for="v in vars">
-              {{ v }}
+                {{ v }}
             </li>
           </ol>
         </div>
+
         <div class="container" v-if='res'>
-            <h2>Script</h2>
-            <pre v-highlightjs='formatSQL(res)'><code class="sql"></code></pre>
+          <h2>Script</h2>
+          <pre v-highlightjs='formatSQL(res)'><code class="sql"></code></pre>
         </div>
         <div class="container" v-if='res2'>
           <h2>Script (*)</h2>
@@ -47,7 +48,17 @@
       if(result && result[grupo]){
         return result[grupo];
       }
-      return '';    
+      return '';
+    }
+    
+    var getTotal =  function (debug){
+      var regExp = /Total: (.+)/g;
+      return getExp(regExp,debug,1);
+    }
+
+    var getUpdates =  function (debug){
+      var regExp = /Updates: (.+)/g;
+      return getExp(regExp,debug,1);
     }
 
     var getPreparing =  function (debug){
@@ -58,6 +69,17 @@
     var getParametros =  function (debug){
       var regExp = /Parameters: (.+)/g;
       return getExp(regExp,debug,1);
+    }
+
+    var comillasString = function (script){
+      var s = script.split(', ');
+      s.forEach(l => {
+        if(l.search('(String)')>-1){
+         var vstring = '\''+l.substring(0,l.length-8)+'\''+'(String)';
+         script = script.replace(l, vstring);
+        }
+      });
+      return script;
     }
 
     var quitarTipos =  function(parametros){
@@ -71,6 +93,13 @@
     var quitarAtributos =  function(sql){
       if(sql){
         return sql.replace(/select (.+) from/g, 'select * from');
+      }
+      return '';
+    }
+
+    var comentarSQL =  function(sql){
+      if(sql){
+        return '-- '+sql+'\n';
       }
       return '';
     }
@@ -90,25 +119,37 @@
       el: '#app',
       data: {
         nombre_app:'SQL Trace Debug',
-        ver_app: '1.1',
+        ver_app: '1.1.1',
         debug:'',
         res:'',
         vars:'',
         script:'',
-        res2:''
+        res2:'',
+        total:'',
+        updates: ''
       },
       methods: {
         cleanDebug: function (evt) {
           if(app.debug){
             app.script = getPreparing(app.debug);
-            var p = quitarTipos(getParametros(app.debug));
+            var p = quitarTipos(comillasString(getParametros(app.debug)));
+            app.total = getTotal(app.debug);
+            app.updates = getUpdates(app.debug);
+
             if(p){
               app.vars = p.split(', ');
             }else{
               app.vars = [];
             }
             if(app.vars && app.script){
-              app.res = getRes(app.vars, app.script);
+              if(app.total){
+                  app.res = comentarSQL('Total: '+app.total) + getRes(app.vars, app.script);
+              }else if(app.updates){
+                app.res = comentarSQL('Updates: '+app.updates) + getRes(app.vars, app.script);
+              }else{
+                app.res = getRes(app.vars, app.script);
+              }
+              
             }else{
               app.res = '';
             }
@@ -120,11 +161,14 @@
             app.vars = '';
             app.script = '';
             app.res2 = '';
+            app.total = '';
+            app.updates = '';
           }
 
         },
         getParametros,
         getPreparing,
+        getTotal,
         getRes,
         quitarTipos,
         quitarAtributos,
