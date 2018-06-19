@@ -21,6 +21,9 @@
         <div class="container" v-if='script'>
           <h2>Preparing</h2>
           <pre v-highlightjs='formatSQL(script)'><code class="sql"></code></pre>
+          <div class="container text-center">
+            <button type="button" @click="copiar(formatSQL(script))" class="btn btn-primary">Copiar</button>
+          </div>
         </div>
         <div class="container"  v-if='script'>
           <h2>Parameters</h2>
@@ -34,10 +37,16 @@
         <div class="container" v-if='res'>
           <h2>Script</h2>
           <pre v-highlightjs='formatSQL(res)'><code class="sql"></code></pre>
+          <div class="container text-center">
+            <button type="button" @click="copiar(formatSQL(res))" class="btn btn-primary">Copiar</button>
+          </div>
         </div>
         <div class="container" v-if='res2'>
           <h2>Script (*)</h2>
           <pre v-highlightjs='formatSQL(res2)'><code class="sql"></code></pre>
+          <div class="container text-center">
+            <button type="button" @click="copiar(formatSQL(res2))" class="btn btn-primary">Copiar</button>
+          </div>
         </div>
     </form>     
   </div>
@@ -56,11 +65,6 @@
       return getExp(regExp,debug,1);
     }
 
-    var getUpdates =  function (debug){
-      var regExp = /Updates: (.+)/g;
-      return getExp(regExp,debug,1);
-    }
-
     var getPreparing =  function (debug){
       var regExp = /Preparing: (.+)/g;
       return getExp(regExp,debug,1);
@@ -69,6 +73,17 @@
     var getParametros =  function (debug){
       var regExp = /Parameters: (.+)/g;
       return getExp(regExp,debug,1);
+    }
+
+    var comillasTimestamp = function (script){
+      var s = script.split(', ');
+      s.forEach(l => {
+        if(l.search('(Timestamp)')>-1){
+         var vTimestamp = '\''+l.substring(0,l.length-11)+'\''+'(Timestamp)';
+         script = script.replace(l, vTimestamp);
+        }
+      });
+      return script;
     }
 
     var comillasString = function (script){
@@ -92,7 +107,7 @@
     
     var quitarAtributos =  function(sql){
       if(sql){
-        return sql.replace(/select (.+) from/g, 'select * from');
+        return sql.replace(/^select (.+?) from/ig, 'SELECT * FROM');
       }
       return '';
     }
@@ -119,22 +134,27 @@
       el: '#app',
       data: {
         nombre_app:'SQL Trace Debug',
-        ver_app: '1.1.1',
+        ver_app: '1.1.5',
         debug:'',
         res:'',
         vars:'',
         script:'',
         res2:'',
+        resc:'',
         total:'',
-        updates: ''
+        supportsCB:false
+      },
+      created() {
+        if(navigator.clipboard) {
+          this.supportsCB = true;
+        }
       },
       methods: {
         cleanDebug: function (evt) {
           if(app.debug){
             app.script = getPreparing(app.debug);
-            var p = quitarTipos(comillasString(getParametros(app.debug)));
+            var p = quitarTipos(comillasTimestamp(comillasString(getParametros(app.debug))));
             app.total = getTotal(app.debug);
-            app.updates = getUpdates(app.debug);
 
             if(p){
               app.vars = p.split(', ');
@@ -142,27 +162,25 @@
               app.vars = [];
             }
             if(app.vars && app.script){
+               app.resc = getRes(app.vars, app.script);
               if(app.total){
-                  app.res = comentarSQL('Total: '+app.total) + getRes(app.vars, app.script);
-              }else if(app.updates){
-                app.res = comentarSQL('Updates: '+app.updates) + getRes(app.vars, app.script);
+                 app.res = comentarSQL('Total: '+app.total) + app.resc;
+                 app.res2 = comentarSQL('Total: '+app.total) + quitarAtributos(app.resc);
               }else{
-                app.res = getRes(app.vars, app.script);
+                app.res = app.resc;
+                app.res2 = quitarAtributos(app.resc);
               }
-              
             }else{
               app.res = '';
-            }
-            if(app.res){
-              app.res2 = quitarAtributos(app.res);
+              app.res2 = '';
+              app.resc = '';
             }
           }else{
             app.res = '';
             app.vars = '';
             app.script = '';
             app.res2 = '';
-            app.total = '';
-            app.updates = '';
+            app.resc = '';
           }
 
         },
@@ -172,7 +190,19 @@
         getRes,
         quitarTipos,
         quitarAtributos,
-        formatSQL
+        formatSQL,
+        copiar:function(valor){
+             navigator.clipboard.writeText(valor)
+            .then(() => {
+              this.message = 'Texto copiado al portapapeles';
+              alert(this.message);
+            })
+          .catch(e => {
+            console.error(e);
+            this.message = 'No se pudo copiar el texto al portapapeles!!!';
+            alert(this.message);
+          });
+        }
       },
       filters: {
         formatSQL
