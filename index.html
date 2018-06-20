@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/obsidian.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js"></script>
   <script src="https://unpkg.com/sql-formatter@2.3.1/dist/sql-formatter.min.js"></script>
+  <script src="https://unpkg.com/vue-toasted"></script>
 </head>
 <body>
   <div id="app" class="container">
@@ -52,89 +53,95 @@
   </div>
 
   <script>
-    var getExp = function (regExp, str, grupo){
-      var result = regExp.exec(str);
+    let getExp = function (regExp, str, grupo){
+      let result = regExp.exec(str);
       if(result && result[grupo]){
         return result[grupo];
       }
       return '';
     }
     
-    var getTotal =  function (debug){
-      var regExp = /Total: (.+)/g;
+    let getTotal =  function (debug){
+      let regExp = /Total: (.+)/g;
       return getExp(regExp,debug,1);
     }
 
-    var getPreparing =  function (debug){
-      var regExp = /Preparing: (.+)/g;
+    let getPreparing =  function (debug){
+      let regExp = /Preparing: (.+)/g;
       return getExp(regExp,debug,1);
     }
 
-    var getParametros =  function (debug){
-      var regExp = /Parameters: (.+)/g;
+    let getParametros =  function (debug){
+      let regExp = /Parameters: (.+)/g;
       return getExp(regExp,debug,1);
     }
 
-    var comillasTimestamp = function (script){
-      var s = script.split(', ');
+    let comillasTimestamp = function (script){
+      let s = script.split(', ');
       s.forEach(l => {
         if(l.search('(Timestamp)')>-1){
-         var vTimestamp = '\''+l.substring(0,l.length-11)+'\''+'(Timestamp)';
+         let vTimestamp = '\''+l.substring(0,l.length-11)+'\''+'(Timestamp)';
          script = script.replace(l, vTimestamp);
         }
       });
       return script;
     }
 
-    var comillasString = function (script){
-      var s = script.split(', ');
+    let comillasString = function (script){
+      let s = script.split(', ');
       s.forEach(l => {
         if(l.search('(String)')>-1){
-         var vstring = '\''+l.substring(0,l.length-8)+'\''+'(String)';
+         let vstring = '\''+l.substring(0,l.length-8)+'\''+'(String)';
          script = script.replace(l, vstring);
         }
       });
       return script;
     }
 
-    var quitarTipos =  function(parametros){
+    let quitarTipos =  function(parametros){
       if(parametros){
-        var v = parametros.replace(/\(.+?\)/g, '');
+        let v = parametros.replace(/\(.+?\)/g, '');
         return v;
       }
       return '';
     }
     
-    var quitarAtributos =  function(sql){
+    let quitarAtributos =  function(sql){
       if(sql){
         return sql.replace(/^select (.+?) from/ig, 'SELECT * FROM');
       }
       return '';
     }
 
-    var comentarSQL =  function(sql){
+    let comentarSQL =  function(sql){
       if(sql){
         return '-- '+sql+'\n';
       }
       return '';
     }
 
-    var getRes = function(v, script){
-        var r = script;
-        var i = 0;
+    let getRes = function(v, script){
+        let r = script;
+        let i = 0;
         r = r.replace(/\?/g,function(){return v[i++]})
         return r;
     }
 
-    var formatSQL = function(sql){
+    let formatSQL = function(sql){
       return window.sqlFormatter.format(sql);
     }
 
-    var app = new Vue({
+    Vue.use(Toasted, { 
+       theme: "primary", 
+       position: "top-center", 
+       duration : 2000
+    });
+    
+    let app = new Vue({
       el: '#app',
       data: {
         nombre_app:'SQL Trace Debug',
-        ver_app: '1.1.5',
+        ver_app: '1.1.6',
         debug:'',
         res:'',
         vars:'',
@@ -153,7 +160,7 @@
         cleanDebug: function (evt) {
           if(app.debug){
             app.script = getPreparing(app.debug);
-            var p = quitarTipos(comillasTimestamp(comillasString(getParametros(app.debug))));
+            let p = quitarTipos(comillasTimestamp(comillasString(getParametros(app.debug))));
             app.total = getTotal(app.debug);
 
             if(p){
@@ -195,12 +202,12 @@
              navigator.clipboard.writeText(valor)
             .then(() => {
               this.message = 'Texto copiado al portapapeles';
-              alert(this.message);
+              app.$toasted.info(this.message);
             })
           .catch(e => {
             console.error(e);
             this.message = 'No se pudo copiar el texto al portapapeles!!!';
-            alert(this.message);
+            app.$toasted.error(this.message);
           });
         }
       },
