@@ -18,6 +18,9 @@
     <form>
         <div class="container form-group">
             <textarea placeholder="Trace" class="form-control" v-model="debug" @input="cleanDebug" @change="cleanDebug" rows=10></textarea>
+            <div class="container text-center">
+              <button type="button" @click="limpiarTrace()" class="btn btn-danger">Limpiar</button>
+            </div>
         </div>
         <div class="container" v-if='script'>
           <h2>Preparing</h2>
@@ -131,6 +134,16 @@
       return window.sqlFormatter.format(sql);
     }
 
+    let limpiarTrace = function(){
+      app.debug = '';
+      app.res='';
+      app.vars='';
+      app.script='';
+      app.res2='';
+      app.resc='';
+      app.total='';
+    }
+
     Vue.use(Toasted, { 
        theme: "primary", 
        position: "top-center", 
@@ -141,7 +154,7 @@
       el: '#app',
       data: {
         nombre_app:'SQL Trace Debug',
-        ver_app: '1.1.6',
+        ver_app: '1.1.7',
         debug:'',
         res:'',
         vars:'',
@@ -198,6 +211,7 @@
         quitarTipos,
         quitarAtributos,
         formatSQL,
+        limpiarTrace,
         copiar:function(valor){
              navigator.clipboard.writeText(valor)
             .then(() => {
